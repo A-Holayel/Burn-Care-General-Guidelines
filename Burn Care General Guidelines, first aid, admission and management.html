@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Burn Care General Guidelines</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Clinical Calm (Background: bg-slate-50, Primary: bg-teal-600, Text: text-slate-800, Accent: bg-orange-500) -->
+    <!-- Application Structure Plan: A tab-based, single-page application is used to provide non-linear access to critical information. The main navigation divides content into four user-centric stages: 1. Identification (classification & first aid), 2. Admission (triage criteria), 3. Clinical Management (with sub-tabs for Medical, Surgical, PT), and 4. Rehabilitation (long-term care). This structure prioritizes quick access to time-sensitive information (like first aid) while allowing for in-depth exploration of treatment protocols, which is more effective for the target audience of medical professionals than a linear document. -->
+    <!-- Visualization & Content Choices: 
+    - Burn Classification: Report Info -> 6 burn types. Goal -> Compare/Inform. Viz -> Interactive cards with expanding details. Interaction -> Click to reveal characteristics. Justification -> More engaging and scannable than a list. Library -> Vanilla JS DOM manipulation.
+    - First Aid: Report Info -> Do's & Don'ts. Goal -> Inform/Instruct. Viz -> Dedicated section with detailed steps and considerations. Interaction -> Static display of categorized points. Justification -> Provides clear, immediate access to all first aid guidelines. Library -> HTML/CSS.
+    - Admission Criteria: Report Info -> Bulleted list. Goal -> Organize/Inform. Viz -> Interactive checklist format. Interaction -> Static display but formatted for clarity. Justification -> Presents criteria as an actionable guideline. Library -> HTML/CSS.
+    - Rule of Nines: Report Info -> TBSA percentages. Goal -> Visualize/Inform. Viz -> Doughnut Chart. Interaction -> Hover to see body part and percentage. Justification -> Interactive representation of the static diagram. Library -> Chart.js (Canvas).
+    - Management Pathways (Medical/Surgical/PT): Report Info -> Detailed text sections. Goal -> Organize/Inform. Viz -> Accordions and tabbed content sections. Interaction -> Click to expand/reveal specific treatment details. Justification -> Manages information density and prevents cognitive overload. Library -> Vanilla JS.
+    - Scenario Analysis (LLM-powered): Report Info -> User-defined burn scenario. Goal -> Simulate/Assist Decision. Viz -> Text input, button, and structured text output. Interaction -> User inputs scenario, clicks button, LLM generates classification, first aid, and admission criteria. Justification -> Provides real-time, context-aware assistance for triage based on the app's guidelines. Library -> Gemini API (gemini-2.0-flash), Vanilla JS fetch.
+    - Images: Report Info -> Visual context. Goal -> Enhance understanding and engagement. Viz -> Placeholder images. Interaction -> Static. Justification -> Provides visual cues for key sections, to be replaced by user-provided hosted images. Library -> HTML (img tag).
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif; 
+            scroll-behavior: smooth;
+        }
+        
+        /* Enhanced Navigation */
+        .nav-button { 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            transform: translateY(0);
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        }
+        .nav-button:hover { 
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.15);
+        }
+        .nav-button.active { 
+            background-color: #0D9488; 
+            color: white; 
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px 0 rgba(13, 148, 136, 0.3);
+        }
+        .nav-button:not(.active):hover { 
+            background-color: #F0F9FF; 
+            border-color: #0D9488;
+        }
+        
+        /* Content Transitions */
+        .content-section { 
+            display: none; 
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        .content-section.active { 
+            display: block; 
+            animation: slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+        @keyframes slideInUp { 
+            from { 
+                opacity: 0; 
+                transform: translateY(20px); 
+            } 
+            to { 
+                opacity: 1; 
+                transform: translateY(0); 
+            } 
+        }
+        
+        /* Enhanced Burn Cards */
+        .burn-card { 
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
+            cursor: pointer; 
+            transform: translateY(0);
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        }
+        .burn-card:hover { 
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px 0 rgba(0, 0, 0, 0.12);
+        }
+        .burn-card .details { 
+            max-height: 0; 
+            overflow: hidden; 
+            transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1), 
+                        opacity 0.3s ease, 
+                        padding 0.3s ease; 
+            opacity: 0;
+            padding: 0 1rem;
+        }
+        .burn-card.active { 
+            border-color: #0D9488; 
+            box-shadow: 0 8px 25px 0 rgba(13, 148, 136, 0.15);
+        }
+        .burn-card.active .details { 
+            max-height: 1000px; 
+            opacity: 1;
+            padding: 1rem;
+        }
+        
+        /* Sub-Navigation Enhancement */
+        .sub-nav-button { 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        .sub-nav-button::before {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background-color: #F97316;
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .sub-nav-button:hover::before {
+            width: 100%;
+        }
+        .sub-nav-button.active { 
+            border-color: #F97316; 
+            color: #F97316; 
+            background-color: #FFF7ED; 
+        }
+        .sub-nav-button.active::before {
+            width: 100%;
+        }
+        
+        .sub-content-section { display: none; }
+        .sub-content-section.active { display: block; }
+        
+        /* Accordion Improvements */
+        .accordion-content { 
+            max-height: 0; 
+            overflow: hidden; 
+            transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                        opacity 0.3s ease,
+                        padding 0.3s ease; 
+            opacity: 0;
+        }
+        .accordion-content.expanded {
+            opacity: 1;
+        }
+        
+        /* Chart Container Enhancement */
+        .chart-container { 
+            position: relative; 
+            width: 100%; 
+            max-width: 450px; 
+            margin-left: auto; 
+            margin-right: auto; 
+            height: 300px;
+            transition: all 0.3s ease;
+        }
+        .chart-container:hover {
+            transform: scale(1.02);
+        }
+        
+        /* Button Enhancements */
+        button {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        button:hover:not(:disabled) {
+            transform: translateY(-1px);
+        }
+        button:active:not(:disabled) {
+            transform: translateY(0);
+        }
+        
+        /* Image Hover Effects */
+        img {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        img:hover {
+            transform: scale(1.05);
+        }
+        
+        /* Loading States */
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #0D9488;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-left: 8px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Focus States for Accessibility */
+        button:focus,
+        textarea:focus {
+            outline: 2px solid #0D9488;
+            outline-offset: 2px;
+        }
+        
+        /* Enhanced Mobile Responsiveness */
+        @media (max-width: 640px) {
+            .chart-container { 
+                height: 250px; 
+                max-width: 300px; 
+            }
+            .burn-card { 
+                margin-bottom: 1rem; 
+            }
+            .accordion-content { 
+                font-size: 0.875rem; 
+            }
+            .nav-button { 
+                font-size: 0.75rem; 
+                padding: 0.5rem 0.75rem; 
+                white-space: nowrap;
+            }
+            .sub-nav-button { 
+                font-size: 0.875rem; 
+                padding: 0.75rem 0.5rem; 
+                white-space: nowrap;
+            }
+            
+            /* Stack navigation vertically on very small screens */
+            #main-nav {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            .nav-button {
+                width: 100%;
+                flex: none;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .chart-container { 
+                height: 200px; 
+                max-width: 250px; 
+            }
+            .nav-button { 
+                font-size: 0.7rem; 
+                padding: 0.4rem 0.6rem; 
+            }
+            
+            /* Ensure text doesn't wrap awkwardly */
+            .nav-button {
+                text-align: center;
+                min-height: 44px; /* Touch target size */
+            }
+        }
+        
+        /* Tablet Responsiveness */
+        @media (min-width: 641px) and (max-width: 1024px) {
+            .chart-container { 
+                height: 350px; 
+                max-width: 400px; 
+            }
+        }
+        
+        /* Large screen improvements */
+        @media (min-width: 1536px) {
+            .chart-container {
+                max-width: 500px;
+                height: 400px;
+            }
+        }
+        
+        /* Smooth scrolling for sticky nav */
+        #main-nav {
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(226, 232, 240, 0.2);
+        }
+        
+        /* Print styles */
+        @media print {
+            .nav-button,
+            #main-nav,
+            .loading-spinner {
+                display: none !important;
+            }
+            .content-section {
+                display: block !important;
+                opacity: 1 !important;
+                transform: none !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <div id="app" class="container mx-auto p-4 md:p-8">
+        
+        <!-- Developer Credit -->
+        <div class="text-left mb-4">
+            <p class="text-sm text-slate-500 font-medium">Programmed by A.Holayel</p>
+        </div>
+        
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-teal-700"> Burn Care General Guidelines</h1>
+            <p class="text-slate-600 mt-2">A quick reference for first aid, admission, and management protocols.</p>
+        </header>
+
+        <nav id="main-nav" class="flex flex-wrap justify-center gap-1 sm:gap-2 md:gap-4 mb-8 sticky top-0 bg-slate-50/80 backdrop-blur-sm py-4 z-10 rounded-lg px-2" role="tablist" aria-label="Main navigation">
+            <button data-target="identification" class="nav-button active text-xs sm:text-sm md:text-base font-medium py-2 px-2 sm:px-3 md:px-4 rounded-full bg-white border border-slate-200 flex-1 sm:flex-none min-w-0" role="tab" aria-selected="true" aria-controls="identification">Brief & First Aid</button>
+            <button data-target="admission" class="nav-button text-xs sm:text-sm md:text-base font-medium py-2 px-2 sm:px-3 md:px-4 rounded-full bg-white border border-slate-200 flex-1 sm:flex-none min-w-0" role="tab" aria-selected="false" aria-controls="admission">Admission Criteria</button>
+            <button data-target="management" class="nav-button text-xs sm:text-sm md:text-base font-medium py-2 px-2 sm:px-3 md:px-4 rounded-full bg-white border border-slate-200 flex-1 sm:flex-none min-w-0" role="tab" aria-selected="false" aria-controls="management">Management Protocols</button>
+            <button data-target="references" class="nav-button text-xs sm:text-sm md:text-base font-medium py-2 px-2 sm:px-3 md:px-4 rounded-full bg-white border border-slate-200 flex-1 sm:flex-none min-w-0" role="tab" aria-selected="false" aria-controls="references">References</button>
+        </nav>
+
+        <main>
+            <section id="identification" class="content-section active" role="tabpanel" aria-labelledby="identification-tab">
+                <div class="grid lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8 mb-8">
+                    <div class="order-2 lg:order-1">
+                        <h3 class="text-lg sm:text-xl font-semibold mb-4 text-center">Burn Classifications</h3>
+                        
+                        <!-- Burn Depth Color Indicator -->
+                        <div class="mb-6 bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-slate-100">
+                            <h4 class="text-sm sm:text-base font-medium text-center mb-3 text-slate-700">Burn Depths</h4>
+                            <div class="relative">
+                                <!-- Color gradient bar -->
+                                <div class="h-6 sm:h-8 rounded-full overflow-hidden shadow-inner border border-slate-200" style="background: linear-gradient(to right, #ffc0cb 0%, #ffc0cb 15%, #8f0006 25%, #8f0006 40%, #ffffff 50%, #ffffff 65%, #000000 75%, #000000 100%);"></div>
+                                
+                                <!-- Labels -->
+                                <div class="flex justify-between mt-2 text-xs sm:text-sm text-slate-600">
+                                    <span class="text-center flex-1">Erythematous<br class="hidden sm:block"><span class="text-pink-600 font-medium">Pink</span></span>
+                                    <span class="text-center flex-1">Mottled<br class="hidden sm:block"><span class="text-red-600 font-medium">Red</span></span>
+                                    <span class="text-center flex-1">Ischemic<br class="hidden sm:block"><span class="text-gray-600 font-medium">White</span></span>
+                                    <span class="text-center flex-1">Charred<br class="hidden sm:block"><span class="text-gray-900 font-medium">Black</span></span>
+                                </div>
+                                
+                                <!-- Depth indicators -->
+                                <div class="flex justify-between mt-1 text-xs text-slate-500">
+                                    <span>Superficial</span>
+                                    <span class="text-center">Partial Thickness</span>
+                                    <span class="text-right">Full Thickness</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="burn-cards-container" class="space-y-3 sm:space-y-4"></div>
+                    </div>
+                    <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-100 order-1 lg:order-2">
+                        <h3 class="text-lg sm:text-xl font-semibold mb-4 text-center">Rule of Nines (Adult TBSA%)</h3>
+                        <div class="chart-container">
+                            <canvas id="tbsaChart"></canvas>
+                        </div>
+                         <p class="text-xs text-slate-500 mt-4 text-center">The Rule of Nines is a standardized method to quickly assess the percentage of total body surface area (TBSA) affected by a burn in adults. Hover over the chart sections to see the corresponding body part and percentage.</p>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-100 mb-8 text-center">
+                    <h2 class="text-2xl sm:text-3xl font-bold text-red-800 mb-2">First Aid Guidelines</h2>
+                    <p class="text-sm sm:text-base text-slate-600 mb-4">Immediate first aid for burns focuses on cooling, pain relief, and infection prevention. Follow these detailed steps to provide effective initial care. Always seek medical attention for severe burns or if unsure about the severity.</p>
+                    <div class="flex justify-center mb-6">
+                        <img src="https://scontent.fcai19-11.fna.fbcdn.net/v/t1.6435-9/79926833_1441093312708865_2209138715282898944_n.png?_nc_cat=106&ccb=1-7&_nc_sid=0b6b33&_nc_ohc=tmTLXpG-D98Q7kNvwFXTMj9&_nc_oc=AdnakAVF6cs2ilk5YZSd-08fS-K2b0IKd3jhBsEHOTfGGlUDESOwArn7eqj5MEog_0U&_nc_zt=23&_nc_ht=scontent.fcai19-11.fna&_nc_gid=gmil2JhIJTf7dc6PnOMoOg&oh=00_AfNXwTu7j-WVVfDRpRhP27WTOJ8SYPrNOUCW1-7Zu6QJ7Q&oe=687D6066" alt="First Aid Management for Burns Infographic" class="rounded-lg shadow-md w-full max-w-xs sm:max-w-md lg:max-w-xl h-auto">
+                    </div>
+                    <div class="grid sm:grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                        <div class="text-left">
+                            <h3 class="text-lg sm:text-xl font-semibold mb-3 text-orange-600">Detailed Steps</h3>
+                            <ul class="list-disc list-inside text-slate-700 space-y-1 sm:space-y-2 text-sm sm:text-base" id="first-aid-detailed-steps"></ul>
+                        </div>
+                        <div class="text-left">
+                            <h3 class="text-lg sm:text-xl font-semibold mb-3 text-orange-600">Important Considerations</h3>
+                            <ul class="list-disc list-inside text-slate-700 space-y-1 sm:space-y-2 text-sm sm:text-base" id="first-aid-important-considerations"></ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-100">
+                    <h2 class="text-xl sm:text-2xl font-bold text-teal-700 mb-2">Scenario Analysis </h2>
+                    <p class="text-sm sm:text-base text-slate-600 mb-4">Describe a burn case scenario to get an AI-powered assessment of classification, first aid, and admission criteria. This tool can assist in quick triage and decision support.</p>
+                    <textarea id="scenario-input" class="w-full p-3 border border-slate-300 rounded-md mb-4 resize-y min-h-[80px] sm:min-h-[100px] text-sm sm:text-base" placeholder="e.g., 'A 45-year-old male presents with deep red, painful blisters on his right forearm covering an area the size of his palm, sustained from hot water.'"></textarea>
+                    <button id="analyze-scenario-btn" class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-full flex items-center justify-center w-full sm:w-auto text-sm sm:text-base">
+                        Analyze Scenario 
+                        <span id="loading-spinner" class="loading-spinner hidden"></span>
+                    </button>
+                    <div id="scenario-output" class="mt-6 p-3 sm:p-4 bg-slate-50 border border-slate-200 rounded-lg hidden">
+                        <h3 class="text-lg sm:text-xl font-semibold text-teal-700 mb-3">AI Analysis:</h3>
+                        <div id="output-classification" class="mb-2 text-sm sm:text-base"><strong>Classification(s):</strong> <span class="text-slate-700"></span></div>
+                        <div id="output-first-aid" class="mb-2 text-sm sm:text-base"><strong>Immediate First Aid:</strong> <ul class="list-disc list-inside text-slate-700"></ul></div>
+                        <div id="output-admission" class="text-sm sm:text-base"><strong>Admission Criteria Met:</strong> <ul class="list-disc list-inside text-slate-700"></ul></div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="admission" class="content-section" role="tabpanel" aria-labelledby="admission-tab">
+                <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-100">
+                    <h2 class="text-xl sm:text-2xl font-bold text-teal-700 mb-2">Criteria for Burn Center Admission</h2>
+                    <p class="text-sm sm:text-base text-slate-600 mb-6">Specialized care is crucial for complex or severe burns. This checklist outlines the American Burn Association's criteria for determining when a patient should be transferred to a designated burn center. These guidelines help ensure patients receive the appropriate level of care to manage complications and optimize recovery.</p>
+                    <div class="grid lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
+                        <div class="order-1">
+                            <ul id="admission-criteria-list" class="space-y-2 sm:space-y-3"></ul>
+                        </div>
+                        <div class="flex justify-center order-2">
+                            <img src="https://static.wixstatic.com/media/1f562f_d30f85a6690f46b8803eb3f757d2645d.png/v1/fill/w_301,h_452,al_c,q_85,usm_0.66_1.00_0.01,enc_auto/1f562f_d30f85a6690f46b8803eb3f757d2645d.png" alt="Burn Center Admission Criteria Visual Guide" class="rounded-lg shadow-md max-w-full h-auto max-w-xs sm:max-w-sm lg:max-w-full">
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="management" class="content-section" role="tabpanel" aria-labelledby="management-tab">
+                <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-100">
+                    <h2 class="text-xl sm:text-2xl font-bold text-teal-700 mb-2">Clinical Management After Burn Injury</h2>
+                    <p class="text-sm sm:text-base text-slate-600 mb-6">Effective management following a burn injury is a multidisciplinary effort, encompassing immediate medical stabilization, surgical intervention, and comprehensive physical therapy. This section details the key strategies in each domain, from initial resuscitation to advanced rehabilitative techniques aimed at restoring function and minimizing long-term complications.</p>
+                    <div id="management-sub-nav" class="flex flex-wrap border-b border-slate-200 mb-6 overflow-x-auto">
+                        <button data-target="medical" class="sub-nav-button active flex-shrink-0 text-center p-2 sm:p-3 font-medium border-b-2 border-transparent text-xs sm:text-sm lg:text-base min-w-0 px-3 sm:px-4">Medical</button>
+                        <button data-target="surgical" class="sub-nav-button flex-shrink-0 text-center p-2 sm:p-3 font-medium border-b-2 border-transparent text-xs sm:text-sm lg:text-base min-w-0 px-3 sm:px-4">Surgical</button>
+                        <button data-target="pt" class="sub-nav-button flex-shrink-0 text-center p-2 sm:p-3 font-medium border-b-2 border-transparent text-xs sm:text-sm lg:text-base min-w-0 px-3 sm:px-4">Physical Therapy</button>
+                        <button data-target="rehab" class="sub-nav-button flex-shrink-0 text-center p-2 sm:p-3 font-medium border-b-2 border-transparent text-xs sm:text-sm lg:text-base min-w-0 px-2 sm:px-4">Discharge & follow-up</button>
+                    </div>
+                    <div id="management-content"></div>
+                </div>
+            </section>
+
+            <section id="references" class="content-section" role="tabpanel" aria-labelledby="references-tab">
+                <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-100">
+                    <h2 class="text-xl sm:text-2xl font-bold text-teal-700 mb-2">References</h2>                    
+                    <div class="space-y-6">
+                        <!-- Academic Reference -->
+                        <div class="border-l-4 border-teal-500 pl-4">
+                            <h3 class="text-lg font-semibold text-slate-800 mb-2">Primary Textbook Reference</h3>
+                            <div class="bg-slate-50 p-4 rounded-lg">
+                                <p class="text-sm sm:text-base text-slate-700 font-medium">
+                                    O'Sullivan, S. B., & Schmitz, T. J. (Editors). <em>Physical Rehabilitation</em>. Chapter 24: Burns.
+                                </p>
+                                <p class="text-xs sm:text-sm text-slate-600 mt-2">
+                                    This comprehensive textbook chapter provides detailed information on burn classification, physical therapy management, rehabilitation protocols, and evidence-based treatment approaches for burn patients across all phases of recovery.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Online Resources -->
+                        <div class="border-l-4 border-orange-500 pl-4">
+                            <h3 class="text-lg font-semibold text-slate-800 mb-2">Clinical Guidelines & Resources</h3>
+                            <div class="space-y-4">
+                                <div class="bg-slate-50 p-4 rounded-lg">
+                                    <h4 class="font-semibold text-slate-700 mb-2">NHS (National Health Service) - Burns and Scalds Treatment</h4>
+                                    <p class="text-xs sm:text-sm text-slate-600 mb-2">
+                                        Comprehensive guidance on burn assessment, first aid management, and treatment protocols from the UK's National Health Service.
+                                    </p>
+                                    <a href="https://www.nhs.uk/conditions/burns-and-scalds/treatment/" target="_blank" class="text-teal-600 hover:text-teal-800 text-sm underline break-all">
+                                        https://www.nhs.uk/conditions/burns-and-scalds/treatment/
+                                    </a>
+                                </div>
+
+                                <div class="bg-slate-50 p-4 rounded-lg">
+                                    <h4 class="font-semibold text-slate-700 mb-2">Health Direct Australia - Burns and Scalds</h4>
+                                    <p class="text-xs sm:text-sm text-slate-600 mb-2">
+                                        Australian government health service providing evidence-based information on burn management, first aid, and when to seek medical attention.
+                                    </p>
+                                    <a href="https://www.healthdirect.gov.au/burns-and-scalds" target="_blank" class="text-teal-600 hover:text-teal-800 text-sm underline break-all">
+                                        https://www.healthdirect.gov.au/burns-and-scalds
+                                    </a>
+                                </div>
+
+                                <div class="bg-slate-50 p-4 rounded-lg">
+                                    <h4 class="font-semibold text-slate-700 mb-2">Better Health Victoria - Burns and Scalds</h4>
+                                    <p class="text-xs sm:text-sm text-slate-600 mb-2">
+                                        Victorian government health resource providing detailed information on burn prevention, treatment, and rehabilitation guidelines.
+                                    </p>
+                                    <a href="https://www.betterhealth.vic.gov.au/health/conditionsandtreatments/burns-and-scalds" target="_blank" class="text-teal-600 hover:text-teal-800 text-sm underline break-all">
+                                        https://www.betterhealth.vic.gov.au/health/conditionsandtreatments/burns-and-scalds
+                                    </a>
+                                </div>
+
+                                <div class="bg-slate-50 p-4 rounded-lg">
+                                    <h4 class="font-semibold text-slate-700 mb-2">World Health Organization (WHO) - Burns Fact Sheet</h4>
+                                    <p class="text-xs sm:text-sm text-slate-600 mb-2">
+                                        Global health organization's comprehensive fact sheet on burns, including epidemiology, prevention strategies, and treatment recommendations.
+                                    </p>
+                                    <a href="https://www.who.int/news-room/fact-sheets/detail/burns#:~:text=What%20to%20do,the%20temperature%20of%20the%20burn." target="_blank" class="text-teal-600 hover:text-teal-800 text-sm underline break-all">
+                                        https://www.who.int/news-room/fact-sheets/detail/burns
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Additional Information -->
+                        <div class="border-l-4 border-slate-400 pl-4">
+                            <h3 class="text-lg font-semibold text-slate-800 mb-2">Additional Standards & Guidelines</h3>
+                            <div class="bg-slate-50 p-4 rounded-lg">
+                                <ul class="list-disc list-inside text-xs sm:text-sm text-slate-600 space-y-1">
+                                    <li>American Burn Association - Burn Center Admission Criteria</li>
+                                    <li>International Association of Fire Chiefs - Emergency Medical Services</li>
+                                    <li>Advanced Trauma Life Support (ATLS) Guidelines</li>
+                                    <li>American College of Surgeons - Trauma Care Standards</li>
+                                </ul>
+                            </div>
+                        </div>
+
+
+                    </div>
+                </div>
+            </section>
+
+
+        </main>
+
+    </div>
+
+    <script>
+        const appData = {
+            burns: [
+                {
+                    name: "Epidermal Burn",
+                    description: "Damage to epidermis only. Heals spontaneously.",
+                    characteristics: ["erythematous Pink, dry surface, ex sun burn"],
+                    healing: "Heals in 3-4 days with peeling. No scarring."
+                },
+                {
+                    name: "Superficial Partial-Thickness",
+                    description: "Damage through epidermis into papillary dermis.",
+                    characteristics: ["bright pink/red, Moist -glistening-", "Intact or broken blisters"],
+                    healing: "Heals in 7-10 days. Minimal scarring."
+                },
+                {
+                    name: "Deep Partial-Thickness",
+                    description: "Destruction of epidermis and papillary dermis, damage into reticular dermis.",
+                    characteristics: ["Mixed red or waxy white color", "Wet surface from broken blisters"],
+                    healing: "Slow healing (3-5 weeks). High risk of hypertrophic/keloid scars."
+                },
+                {
+                    name: "Full-Thickness Burn",
+                    description: "Complete destruction of all epidermal and dermal layers.",
+                    characteristics: ["Hard, parchment-like eschar (black, deep red -hemoglobin fixation-, or white-ischemic-)"],
+                    healing: "Requires skin grafting for healing."
+                },
+                {
+                    name: "Subdermal Burn",
+                    description: "Complete destruction through all skin layers, potentially into muscle and bone.",
+                    characteristics: ["Charred appearance", "Visible tissue defects", "Often associated with electrical burns"],
+                    healing: "Requires skin graft or flap. Significant scarring."
+                }
+            ],
+            firstAid: {
+                generalSteps: [
+                    "Stop the Burning Process: Remove the person from the source of the burn and extinguish any flames (rolling on the ground, using a blanket, or water if safe).",
+                    "Cool the Burn: Immediately begin cooling with cool (not cold) running water for at least 10-20 minutes. This helps reduce pain, swelling, and tissue damage.",
+                    "Remove Clothing and Jewelry: Remove any clothing or jewelry that is not stuck to the burn. Do not attempt to remove anything stuck to the burn, as this could cause further damage.",
+                    "Cover the Burn: Loosely cover the burn with a sterile or clean, non-fluffy dressing or cling film. This helps prevent infection and reduces pain.",
+                    "Pain Relief: Over-the-counter pain relievers like ibuprofen or acetaminophen can help manage pain. Follow the dosage instructions on the label.",
+                    "Monitor for Shock: Be aware of the signs of shock (shallow breathing, pale skin, fainting) and seek immediate medical help if needed."
+                ],
+                importantConsiderations: [
+                    "Never use ice, ice water, butter, petroleum jelly, or other greasy substances on a burn.",
+                    "Do not break blisters, as they help protect against infection.",
+                    "Keep the person warm: to prevent hypothermia, especially when cooling a large burn area.",
+                    "Elevate the burned area: if possible, to help reduce swelling.",
+                    "For chemical burns: Flush the affected area with copious amounts of water for at least 20 minutes. If it is a dry chemical, brush it off before flushing.",
+                    "For electrical burns: Ensure the power source is turned off before approaching the person."
+                ]
+            },
+            admissionCriteria: [
+                "Partial-thickness burns > 10% Total Body Surface Area (TBSA).",
+                "Burns involving the face, hands, feet, genitalia, perineum, or major joints.",
+                "Third-degree (full-thickness) burns in any age group.",
+                "Electrical burns, including lightning injury.",
+                "Chemical burns.",
+                "Inhalation injury.",
+                "Burn injury in patients with complicating preexisting medical disorders.",
+                "Any patient with burns and concomitant trauma (e.g., fractures).",
+                "Children with burns in hospitals without qualified pediatric personnel.",
+                "Burn patients requiring special social, emotional, or rehabilitative intervention."
+            ],
+            management: {
+                medical: {
+                    title: "Medical Management",
+                    content: [
+                        { 
+                            title: "Initial Treatment Goals", 
+                            details: [
+                                "Establish and maintain an airway.",
+                                "Prevent cyanosis, shock, and hemorrhage.",
+                                "Establish baseline data (extent/depth of burn).",
+                                "Prevent or reduce fluid losses (fluid resuscitation).",
+                                "Clean the patient and wounds.",
+                                "Examine all injuries.",
+                                "Prevent pulmonary and cardiac complications."
+                            ]
+                        },
+                        {
+                            title: "Topical Medications and Dressings",
+                            details: [
+                                "<strong>Open Technique:</strong> Topical cream applied without dressings, allowing inspection but requiring frequent reapplication.",
+                                "<strong>Closed Technique:</strong> Dressings applied over topical agent to hold it, reduce fluid loss, and protect the wound.",
+                                "<strong>Common Medications:</strong> Silver sulfadiazine, Mafenide acetate, Silver nitrate, Bacitracin/Polysporin, Collagenase."
+                            ]
+                        }
+                    ]
+                },
+                surgical: {
+                    title: "Surgical Management",
+                    content: [
+                        {
+                            title: "Primary Excision",
+                            details: [ "Surgical removal of eschar down to viable tissue, typically within 1 week of injury. Promotes rapid healing and reduces infection/scarring." ]
+                        },
+                        { 
+                            title: "Wound Cleansing and Debridement",
+                            details: [
+                                "Goal: Remove dead tissue, prevent infection, promote revascularization.",
+                                "Method: Daily cleaning via showers or bed baths (hydrotherapy tubs no longer recommended).",
+                                "Sharp Debridement: Use of surgical scissors/scalpel to remove sloughed epidermis and loose eschar."
+                            ]
+                        },
+                        {
+                            title: "Skin Grafts",
+                            details: [
+                                "<strong>Autograft:</strong> Patient's own skin (permanent).",
+                                "<strong>Allograft (Homograft):</strong> Cadaver skin (temporary).",
+                                "<strong>Xenograft (Heterograft):</strong> Pig skin (temporary).",
+                                "<strong>Skin Substitutes:</strong> Biologically engineered tissues for large burns.",
+                                "<strong>Split-Thickness vs. Full-Thickness:</strong> Thinner grafts adhere better; thicker grafts have better cosmesis.",
+                                "<strong>Sheet vs. Mesh Graft:</strong> Sheet grafts for optimal cosmesis (face, hands); mesh grafts are expanded to cover larger areas."
+                           ]
+                        },
+                        {
+                            title: "Scar Contracture Correction",
+                            details: [ "If physical therapy is unsuccessful, surgical release may be required. Procedures include Z-plasty (to lengthen scar) and additional skin grafting." ]
+                        }
+                    ]
+                },
+                pt: {
+                    title: "Physical Therapy Management",
+                    content: [
+                        { 
+                            title: "Examination & Goals", 
+                            details: [
+                                "<strong>Focus:</strong> Restore pre-injury function.",
+                                "<strong>Examination:</strong> Assess burn depth/TBSA, ROM, impairments, functional limitations, and psychological impact.",
+                                "<strong>Goals:</strong> Minimize edema, improve mobility and strength, ensure caregiver independence, improve physical function."
+                            ] 
+                        },
+                        {
+                            title: "acute management first 48 hours",
+                            details: [
+                                "<strong>Goal:</strong> Counteract scar tissue contraction, minimize edema, preserve function.",
+                                "<strong>Positioning:</strong> Place joints opposite the anticipated direction of contracture (e.g., neck extension for anterior neck burn).",
+                                "<strong>Splinting:</strong> Static, static progressive, or dynamic splints to prevent contracture, maintain ROM, and protect joints. Worn during rest or post-grafting."
+                            ]
+                        },
+                        {
+                            title: "subacute management between 1st 48 hours & wound closure",
+                            details: [
+                                "<strong>Passive/AAROM:</strong> Used when patient cannot achieve full active range.",
+                                "<strong>Active Exercise:</strong> Begins day of admission for all body parts.",
+                                "<strong>Post-Grafting:</strong> Gentle ROM reinstituted as soon as safe per surgeon, considering CFUs.",
+                                "<strong>Pain Management:</strong> Coordinate with medicsation.",
+                                "<strong>Ambulation:</strong> Progress from assistive devices to independent ambulation."
+                            ]
+                        },
+                        {
+                            title: "chronic management",
+                            details: [
+                                "<strong>Outpatient Follow-up:</strong> Regular clinic visits to monitor healing progress and adjust treatment plans.",
+                                "<strong>Functional Training:</strong> Advanced exercises to restore pre-injury function and work-related activities.",
+                                "<strong>Endurance Building:</strong> Cardiovascular and muscular endurance training to improve overall fitness.",
+                                "<strong>Return to Activities:</strong> Gradual progression to normal daily activities, sports, and work duties.",
+                                "<strong>Long-term Monitoring:</strong> Ongoing assessment for contracture development and functional limitations."
+                            ]
+                        }
+                    ]
+                },
+                rehab: {
+                    title: "Rehabilitation & Discharge Planning",
+                    content: [
+                {
+                    title: "Scar Management (Post-Wound Closure)",
+                    details: [
+                        "<strong>Pressure Therapy:</strong> Worn 23 hrs/day. Hastens scar maturation and minimizes hypertrophy. Includes elastic wraps, custom garments, and inserts for concave areas.",
+                        "<strong>Silicone Gel:</strong> Sheets or gels applied directly over immature scars to manage hypertrophy.",
+                        "<strong>Massage:</strong> Deep friction massage to loosen scar tissue, break adhesions, and improve pliability. Also reduces pain and itching.",
+                        "<strong>Camouflage Makeup:</strong> For visible scars on face, neck, and hands to cover pigmentation changes."
+                    ]
+                },
+                {
+                    title: "Follow-Up & Home Care (HEP)",
+                    details: [
+                        "<strong>Home Exercise Program:</strong> Continue ROM, massage, and ADL skills.",
+                        "<strong>Splinting/Pressure Program:</strong> Patient/family must be independent with application/removal.",
+                        "<strong>Skin Care:</strong> Use mild soaps/creams. Apply moisturizer 2-3x daily. Use sunscreen (SPF 30+) and avoid sun.",
+                        "<strong>Itching:</strong> Instruct patient to pat, not scratch. Use creams or antihistamines."
+                    ]
+                },
+                {
+                    title: "Discharge Plan & Community Resources",
+                    details: [
+                        "<strong>Plan:</strong> Comprehensive instructions on HEP, splinting, skin care, and signs of complications.",
+                        "<strong>Referrals:</strong> Outpatient PT and community support groups.",
+                        "<strong>Resources:</strong> American Burn Association, Phoenix Society for Burn Survivors, Burn Camps, School Reentry Programs."
+                    ]
+                },
+                {
+                    title: "Anticipated Rehabilitation Potential",
+                    details: [
+                        "Functional recovery is significantly improved with modern care and patient adherence.",
+                        "Early, consistent rehabilitation is key to minimizing long-term impairments.",
+                        "Recovery is a dynamic, long-term process requiring commitment for optimal outcomes."
+                    ]
+                }
+                    ]
+                }
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const mainNav = document.getElementById('main-nav');
+            const contentSections = document.querySelectorAll('.content-section');
+            const burnCardsContainer = document.getElementById('burn-cards-container');
+            const admissionList = document.getElementById('admission-criteria-list');
+            const managementSubNav = document.getElementById('management-sub-nav');
+            const managementContent = document.getElementById('management-content');
+
+            const scenarioInput = document.getElementById('scenario-input');
+            const analyzeScenarioBtn = document.getElementById('analyze-scenario-btn');
+            const scenarioOutput = document.getElementById('scenario-output');
+            const loadingSpinner = document.getElementById('loading-spinner');
+            const outputClassification = document.querySelector('#output-classification span');
+            const outputFirstAid = document.querySelector('#output-first-aid ul');
+            const outputAdmission = document.querySelector('#output-admission ul');
+            const firstAidDetailedSteps = document.getElementById('first-aid-detailed-steps');
+            const firstAidImportantConsiderations = document.getElementById('first-aid-important-considerations');
+
+
+            function setupNav(navElement, contentSelector, defaultActive) {
+                navElement.addEventListener('click', (e) => {
+                    if (e.target.tagName === 'BUTTON') {
+                        const targetId = e.target.dataset.target;
+                        
+                        // Update nav button states with smooth transition
+                        navElement.querySelectorAll('button').forEach(btn => {
+                            btn.classList.remove('active');
+                            btn.setAttribute('aria-selected', 'false');
+                        });
+                        e.target.classList.add('active');
+                        e.target.setAttribute('aria-selected', 'true');
+
+                        // Smoothly transition content sections
+                        document.querySelectorAll(contentSelector).forEach(section => {
+                            if (section.classList.contains('active')) {
+                                section.style.opacity = '0';
+                                section.style.transform = 'translateY(20px)';
+                                setTimeout(() => {
+                                    section.classList.remove('active');
+                                }, 150);
+                            }
+                        });
+
+                        // Show target section with delay for smooth transition
+                        setTimeout(() => {
+                            const targetSection = document.getElementById(targetId);
+                            if (targetSection) {
+                                targetSection.classList.add('active');
+                            }
+                        }, 200);
+                    }
+                });
+                
+                if(defaultActive) {
+                    const defaultButton = navElement.querySelector(`[data-target='${defaultActive}']`);
+                    if (defaultButton) {
+                        defaultButton.click();
+                    }
+                }
+            }
+
+            setupNav(mainNav, '.content-section');
+
+            function createAccordion(item) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'border border-slate-200 rounded-lg';
+                
+                const button = document.createElement('button');
+                button.className = 'w-full p-3 sm:p-4 text-left font-semibold flex justify-between items-center text-sm sm:text-base';
+                button.innerHTML = `<span class="pr-2">${item.title}</span><span class="transform transition-transform duration-300 flex-shrink-0">▼</span>`;
+                button.setAttribute('aria-expanded', 'false');
+                button.setAttribute('aria-controls', `accordion-content-${Math.random().toString(36).substr(2, 9)}`);
+
+                const content = document.createElement('div');
+                content.className = 'accordion-content px-3 sm:px-4 pb-3 sm:pb-4 text-slate-600';
+                
+                const list = document.createElement('ul');
+                list.className = 'space-y-1 sm:space-y-2 list-disc list-inside text-sm sm:text-base';
+                item.details.forEach(detail => {
+                    const li = document.createElement('li');
+                    li.innerHTML = detail;
+                    list.appendChild(li);
+                });
+                content.appendChild(list);
+
+                button.addEventListener('click', () => {
+                    const icon = button.querySelector('span:last-child');
+                    const isExpanded = content.style.maxHeight && content.style.maxHeight !== '0px';
+                    
+                    if (isExpanded) {
+                        content.style.maxHeight = '0px';
+                        content.classList.remove('expanded');
+                        icon.style.transform = 'rotate(0deg)';
+                        button.setAttribute('aria-expanded', 'false');
+                    } else {
+                        content.style.maxHeight = content.scrollHeight + 'px';
+                        content.classList.add('expanded');
+                        icon.style.transform = 'rotate(180deg)';
+                        button.setAttribute('aria-expanded', 'true');
+                    }
+                });
+
+                wrapper.appendChild(button);
+                wrapper.appendChild(content);
+                return wrapper;
+            }
+
+            function loadBurnCards() {
+                burnCardsContainer.innerHTML = '';
+                appData.burns.forEach((burn) => {
+                    const card = document.createElement('div');
+                    card.className = 'burn-card bg-white p-4 rounded-lg shadow-sm border-2 border-transparent';
+                    
+                    card.innerHTML = `
+                        <h4 class="font-bold text-base sm:text-lg text-teal-700">${burn.name}</h4>
+                        <p class="text-xs sm:text-sm text-slate-500 mb-2">${burn.description}</p>
+                        <div class="details mt-4 border-t pt-4">
+                            <h5 class="font-semibold mb-2 text-sm sm:text-base">Characteristics:</h5>
+                            <ul class="list-disc list-inside text-slate-600 text-xs sm:text-sm mb-4 space-y-1">
+                                ${burn.characteristics.map(c => `<li>${c}</li>`).join('')}
+                            </ul>
+                            <h5 class="font-semibold mb-2 text-sm sm:text-base">Healing & Scarring:</h5>
+                            <p class="text-slate-600 text-xs sm:text-sm mb-4">${burn.healing}</p>
+                        </div>
+                    `;
+                    card.addEventListener('click', () => {
+                        const currentlyActive = burnCardsContainer.querySelector('.burn-card.active');
+                        if (currentlyActive && currentlyActive !== card) {
+                            currentlyActive.classList.remove('active');
+                        }
+                        card.classList.toggle('active');
+                    });
+                    burnCardsContainer.appendChild(card);
+                });
+            }
+
+            function loadFirstAidGuidelines() {
+                firstAidDetailedSteps.innerHTML = '';
+                appData.firstAid.generalSteps.forEach(step => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<span class="text-green-600 font-bold mr-2">✅</span>${step}`;
+                    firstAidDetailedSteps.appendChild(li);
+                });
+
+                firstAidImportantConsiderations.innerHTML = '';
+                appData.firstAid.importantConsiderations.forEach(consideration => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<span class="text-red-600 font-bold mr-2">❌</span>${consideration}`;
+                    firstAidImportantConsiderations.appendChild(li);
+                });
+            }
+
+
+            function loadAdmissionCriteria() {
+                admissionList.innerHTML = '';
+                appData.admissionCriteria.forEach(criterion => {
+                    const li = document.createElement('li');
+                    li.className = 'flex items-start';
+                    li.innerHTML = `<span class="text-teal-500 font-bold mr-2 sm:mr-3 mt-1 flex-shrink-0">➔</span><span class="text-sm sm:text-base">${criterion}</span>`;
+                    admissionList.appendChild(li);
+                });
+            }
+            
+            function loadManagementContent(category) {
+                managementContent.innerHTML = '';
+                const data = appData.management[category];
+                if (data) {
+                    const container = document.createElement('div');
+                    container.className = 'space-y-4';
+                    data.content.forEach(item => {
+                       container.appendChild(createAccordion(item));
+                    });
+                    
+                    // Add image if it exists for surgical category
+                    if (category === 'surgical') {
+                        const imageContainer = document.createElement('div');
+                        imageContainer.className = 'mt-6 text-center';
+                        imageContainer.innerHTML = `
+                            <img src="https://www.theplasticsfella.com/content/images/2022/03/4-6.png" 
+                                 alt="Z-Plasty Surgical Technique Illustration" 
+                                 class="mx-auto rounded-lg shadow-md max-w-sm h-auto">
+                            <p class="text-sm text-slate-500 mt-2 italic">Z-Plasty technique for scar contracture correction</p>
+                        `;
+                        container.appendChild(imageContainer);
+                    }
+                    
+                    managementContent.appendChild(container);
+                }
+            }
+            
+            function setupManagementNav() {
+                managementSubNav.addEventListener('click', (e) => {
+                    if (e.target.tagName === 'BUTTON') {
+                        const targetCategory = e.target.dataset.target;
+                        managementSubNav.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+                        e.target.classList.add('active');
+                        loadManagementContent(targetCategory);
+                    }
+                });
+                managementSubNav.querySelector(`[data-target='medical']`).click();
+            }
+
+
+
+            function renderTBSAChart() {
+                const canvas = document.getElementById('tbsaChart');
+                if (!canvas) {
+                    console.error('Chart canvas not found');
+                    return;
+                }
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    console.error('Could not get 2D context from canvas');
+                    return;
+                }
+                new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Head & Neck', 'Anterior Trunk', 'Posterior Trunk', 'Right Arm', 'Left Arm', 'Perineum', 'Right Leg', 'Left Leg'],
+                        datasets: [{
+                            label: '% TBSA',
+                            data: [9, 18, 18, 9, 9, 1, 18, 18],
+                            backgroundColor: [
+                                '#0D9488', '#14B8A6', '#2DD4BF', // Teals
+                                '#F97316', '#FB923C', // Oranges
+                                '#4F46E5', // Indigo for perineum
+                                '#0891B2', '#06B6D4' // Cyans
+                            ],
+                            borderColor: '#FFFFFF',
+                            borderWidth: 2,
+                            hoverOffset: 10
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    padding: 15,
+                                    font: {
+                                        size: 12
+                                    }
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed !== null) {
+                                            label += context.parsed + '%';
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            analyzeScenarioBtn.addEventListener('click', analyzeScenario);
+
+            async function analyzeScenario() {
+                const prompt = scenarioInput.value.trim();
+                if (!prompt) {
+                    scenarioOutput.innerHTML = '<p class="text-red-500">Please enter a scenario to analyze.</p>';
+                    scenarioOutput.classList.remove('hidden');
+                    return;
+                }
+
+                loadingSpinner.classList.remove('hidden');
+                analyzeScenarioBtn.disabled = true;
+                scenarioOutput.classList.add('hidden'); // Hide previous output
+
+                outputClassification.textContent = '';
+                outputFirstAid.innerHTML = '';
+                outputAdmission.innerHTML = '';
+
+                try {
+                    let chatHistory = [];
+                    chatHistory.push({ role: "user", parts: [{ text: `You are an expert in burn care. Analyze the following burn scenario and provide a concise JSON response with the burn classification(s), immediate first aid steps, and any relevant burn center admission criteria met based on standard guidelines. Ensure all points are highly relevant and actionable.
+
+Scenario: "${prompt}"
+
+Format your response as a JSON object with the following structure:
+{
+  "classification": ["string_classification_1", "string_classification_2"],
+  "firstAid": ["string_step_1", "string_step_2"],
+  "admissionCriteriaMet": ["string_criterion_1", "string_criterion_2"]
+}`}] });
+
+                    const payload = {
+                        contents: chatHistory,
+                        generationConfig: {
+                            responseMimeType: "application/json",
+                            responseSchema: {
+                                type: "OBJECT",
+                                properties: {
+                                    "classification": { "type": "ARRAY", "items": { "type": "STRING" } },
+                                    "firstAid": { "type": "ARRAY", "items": { "type": "STRING" } },
+                                    "admissionCriteriaMet": { "type": "ARRAY", "items": { "type": "STRING" } }
+                                }
+                            }
+                        }
+                    };
+                    const apiKey = ""; // TODO: Add your Gemini API key here
+                    if (!apiKey) {
+                        throw new Error('API key is required for scenario analysis. Please add your Gemini API key.');
+                    }
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const result = await response.json();
+                    
+                    if (result.candidates && result.candidates.length > 0 &&
+                        result.candidates[0].content && result.candidates[0].content.parts &&
+                        result.candidates[0].content.parts.length > 0) {
+                        
+                        const jsonText = result.candidates[0].content.parts[0].text;
+                        const parsedJson = JSON.parse(jsonText);
+
+                        outputClassification.textContent = parsedJson.classification.join(', ') || 'N/A';
+                        parsedJson.firstAid.forEach(step => {
+                            const li = document.createElement('li');
+                            li.textContent = step;
+                            outputFirstAid.appendChild(li);
+                        });
+                        parsedJson.admissionCriteriaMet.forEach(criterion => {
+                            const li = document.createElement('li');
+                            li.textContent = criterion;
+                            outputAdmission.appendChild(li);
+                        });
+
+                        scenarioOutput.classList.remove('hidden');
+
+                    } else {
+                        scenarioOutput.innerHTML = '<p class="text-red-500">Error: Could not retrieve AI analysis. Please try again.</p>';
+                        scenarioOutput.classList.remove('hidden');
+                    }
+
+                } catch (error) {
+                    console.error('Error calling Gemini API:', error);
+                    let errorMessage = error.message;
+                    if (error.message.includes('API key')) {
+                        errorMessage = 'API key is missing. Please add your Gemini API key to enable scenario analysis.';
+                    } else if (error.message.includes('fetch')) {
+                        errorMessage = 'Network error. Please check your internet connection and try again.';
+                    }
+                    scenarioOutput.innerHTML = `<p class="text-red-500">An error occurred: ${errorMessage}</p>`;
+                    scenarioOutput.classList.remove('hidden');
+                } finally {
+                    loadingSpinner.classList.add('hidden');
+                    analyzeScenarioBtn.disabled = false;
+                }
+            }
+
+
+            loadBurnCards();
+            loadFirstAidGuidelines(); 
+            loadAdmissionCriteria();
+            setupManagementNav();
+            renderTBSAChart();
+        });
+    </script>
+</body>
+</html>
