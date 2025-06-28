@@ -37,26 +37,27 @@
             border-color: #0D9488;
         }
         
-        /* Content Transitions */
+                /* Content Transitions */
         main {
             position: relative;
-            min-height: 500px;
+            min-height: auto;
         }
         .content-section { 
-            opacity: 0;
-            visibility: hidden;
-            transform: translateY(15px);
-            transition: opacity 0.4s ease-in-out, transform 0.4s ease-in-out, visibility 0.4s ease-in-out;
-            position: absolute;
-            width: 100%;
-            top: 0;
-            left: 0;
+            display: none;
         }
         .content-section.active { 
-            opacity: 1;
-            visibility: visible;
-            transform: translateY(0);
-            position: relative;
+            display: block;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
         
         /* Enhanced Burn Cards */
@@ -65,10 +66,28 @@
             cursor: pointer; 
             transform: translateY(0);
             box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+            border: 2px solid #e2e8f0;
+            position: relative;
+        }
+        .burn-card::before {
+            content: "▼";
+            position: absolute;
+            top: 0.5rem;
+            right: 0.75rem;
+            font-size: 0.875rem;
+            color: #64748b;
+            opacity: 0.7;
+            font-weight: 600;
+            transition: all 0.3s ease;
         }
         .burn-card:hover { 
             transform: translateY(-3px);
             box-shadow: 0 8px 25px 0 rgba(0, 0, 0, 0.12);
+            border-color: #0D9488;
+        }
+        .burn-card:hover::before {
+            color: #0D9488;
+            opacity: 1;
         }
         .burn-card .details { 
             max-height: 0; 
@@ -82,6 +101,11 @@
         .burn-card.active { 
             border-color: #0D9488; 
             box-shadow: 0 8px 25px 0 rgba(13, 148, 136, 0.15);
+        }
+        .burn-card.active::before {
+            transform: rotate(180deg);
+            color: #0D9488;
+            opacity: 1;
         }
         .burn-card.active .details { 
             max-height: 1000px; 
@@ -287,11 +311,11 @@
             
             /* Cards and Content */
             .burn-card { 
-                margin-bottom: 1rem;
+                margin-bottom: 1rem; 
                 padding: 1rem;
             }
             .accordion-content { 
-                font-size: 0.875rem;
+                font-size: 0.875rem; 
                 padding: 0.75rem;
             }
         }
@@ -307,7 +331,7 @@
                 flex-wrap: wrap;
                 gap: 0.5rem;
             }
-            .nav-button { 
+            .nav-button {
                 font-size: 0.8rem; 
                 padding: 0.625rem 0.875rem; 
                 flex: 1 1 calc(50% - 0.25rem);
@@ -383,7 +407,7 @@
                 height: 350px; 
                 max-width: 400px; 
             }
-            
+        
             /* Improve grid layouts */
             .grid.lg\\:grid-cols-2 {
                 grid-template-columns: 1fr 1fr;
@@ -460,6 +484,32 @@
             main {
                 min-height: auto;
             }
+            
+            /* Mobile burn card improvements */
+            .burn-card::before {
+                font-size: 0.65rem;
+                top: 0.25rem;
+                right: 0.5rem;
+            }
+            
+            /* Mobile signature positioning */
+            .signature {
+                position: relative;
+                top: auto;
+                left: auto;
+                margin-bottom: 1rem;
+                background: rgba(248, 250, 252, 0.95);
+                display: inline-block;
+            }
+            
+            /* Enhanced mobile navigation */
+            #main-nav {
+                position: sticky !important;
+                top: 0;
+                z-index: 50;
+                background: rgba(248, 250, 252, 0.98) !important;
+                backdrop-filter: blur(10px);
+            }
         }
         
         /* Landscape Mobile Orientation */
@@ -479,6 +529,29 @@
         #main-nav {
             backdrop-filter: blur(8px);
             border: 1px solid rgba(226, 232, 240, 0.2);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: rgba(248, 250, 252, 0.95);
+        }
+        
+        /* Pinned Signature */
+        .signature {
+            position: fixed;
+            top: 1rem;
+            left: 1rem;
+            z-index: 60;
+            background: rgba(248, 250, 252, 0.95);
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.5rem;
+            border: 1px solid rgba(226, 232, 240, 0.3);
+            backdrop-filter: blur(8px);
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+        .signature:hover {
+            background: rgba(248, 250, 252, 1);
+            box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.15);
         }
         
         /* Print styles */
@@ -500,7 +573,7 @@
     <div id="app" class="container mx-auto p-4 md:p-8">
         
         <!-- Developer Credit -->
-        <div class="text-left mb-4">
+        <div class="signature">
             <p class="text-sm text-slate-500 font-medium">Programmed by A.Holayel</p>
         </div>
         
