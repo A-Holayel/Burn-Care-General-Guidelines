@@ -252,6 +252,19 @@
         @media (max-width: 480px) {
             #app {
                 padding: 1rem 0.75rem;
+                padding-top: 0.5rem; /* Reduce top padding for mobile */
+            }
+            
+            /* Mobile signature positioning */
+            .signature {
+                position: relative !important;
+                top: auto !important;
+                left: auto !important;
+                margin-bottom: 1rem;
+                margin-top: 0.5rem;
+                display: inline-block;
+                background: rgba(248, 250, 252, 0.9);
+                z-index: auto;
             }
             
             main {
@@ -264,6 +277,7 @@
                 gap: 0.5rem;
                 padding: 1rem;
                 position: static; /* Remove sticky on very small screens */
+                margin-top: 0;
             }
             .nav-button {
                 width: 100%;
@@ -272,6 +286,11 @@
                 padding: 0.75rem 1rem;
                 min-height: 48px; /* Enhanced touch target */
                 text-align: center;
+            }
+            
+            /* Header adjustments */
+            header {
+                margin-bottom: 1.5rem !important;
             }
             
             /* Sub Navigation */
@@ -311,11 +330,11 @@
             
             /* Cards and Content */
             .burn-card { 
-                margin-bottom: 1rem; 
+                margin-bottom: 1rem;
                 padding: 1rem;
             }
             .accordion-content { 
-                font-size: 0.875rem; 
+                font-size: 0.875rem;
                 padding: 0.75rem;
             }
         }
@@ -324,19 +343,40 @@
         @media (max-width: 640px) {
             #app {
                 padding: 1rem;
+                padding-top: 0.75rem;
+            }
+            
+            /* Mobile signature positioning */
+            .signature {
+                position: relative !important;
+                top: auto !important;
+                left: auto !important;
+                margin-bottom: 1rem;
+                display: inline-block;
+                background: rgba(248, 250, 252, 0.9);
+                z-index: auto;
             }
             
             /* Navigation */
             #main-nav {
                 flex-wrap: wrap;
                 gap: 0.5rem;
+                position: sticky !important;
+                top: 0;
+                z-index: 50;
+                margin-top: 0;
             }
-            .nav-button {
+            .nav-button { 
                 font-size: 0.8rem; 
                 padding: 0.625rem 0.875rem; 
                 flex: 1 1 calc(50% - 0.25rem);
                 min-width: 0;
                 min-height: 44px;
+            }
+            
+            /* Header adjustments */
+            header {
+                margin-bottom: 1.5rem !important;
             }
             
             /* Sub Navigation */
@@ -554,10 +594,47 @@
             box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.15);
         }
         
+        /* Final Mobile Override for All Small Screens */
+        @media (max-width: 768px) {
+            /* Adjust app container for mobile */
+            #app {
+                padding-top: 1rem !important;
+            }
+            
+            .signature {
+                position: static !important;
+                display: block !important;
+                margin: 0 0 1rem 0 !important;
+                padding: 0.5rem 0.75rem !important;
+                background: rgba(248, 250, 252, 0.9) !important;
+                border-radius: 0.5rem !important;
+                border: 1px solid rgba(226, 232, 240, 0.3) !important;
+                box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1) !important;
+                width: fit-content !important;
+                z-index: auto !important;
+            }
+            
+            /* Ensure proper spacing for header */
+            header {
+                margin-top: 0.5rem !important;
+                margin-bottom: 1.5rem !important;
+            }
+            
+            /* Ensure navigation doesn't overlap anything */
+            #main-nav {
+                margin-top: 0 !important;
+                margin-bottom: 1.5rem !important;
+                position: sticky !important;
+                top: 0 !important;
+                z-index: 50 !important;
+            }
+        }
+        
         /* Print styles */
         @media print {
             .nav-button,
-            #main-nav {
+            #main-nav,
+            .signature {
                 display: none !important;
             }
             .content-section {
